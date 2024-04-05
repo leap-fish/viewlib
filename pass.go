@@ -8,10 +8,6 @@ type Pass struct {
 	canvas  bool
 }
 
-func (p *Pass) PreparePass(screen *ebiten.Image) {
-	p.Surface = screen
-}
-
 func (p *Pass) Draw(image *ebiten.Image, ops *ebiten.DrawImageOptions) {
 	// If we're in canvas mode, we draw the image as it should be at the correct position already.
 	if p.canvas {
@@ -25,13 +21,15 @@ func (p *Pass) Draw(image *ebiten.Image, ops *ebiten.DrawImageOptions) {
 
 func NewRenderPass(camera *Camera) *Pass {
 	return &Pass{
-		camera: camera,
+		Surface: ebiten.NewImage(camera.Width, camera.Height),
+		camera:  camera,
 	}
 }
 
 func NewCanvasRenderPass(camera *Camera) *Pass {
 	return &Pass{
-		camera: camera,
-		canvas: true,
+		Surface: ebiten.NewImage(camera.Width, camera.Height),
+		camera:  camera,
+		canvas:  true,
 	}
 }
