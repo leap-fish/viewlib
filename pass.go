@@ -19,6 +19,12 @@ func (p *Pass) Draw(image *ebiten.Image, ops *ebiten.DrawImageOptions) {
 	}
 }
 
+// UpdateCamera can be used if the camera's width/height changes
+func (p *Pass) UpdateCamera(camera *Camera) {
+	p.camera = camera
+	p.Surface = ebiten.NewImage(camera.Width, camera.Height)
+}
+
 func NewRenderPass(camera *Camera) *Pass {
 	return &Pass{
 		Surface: ebiten.NewImage(camera.Width, camera.Height),
