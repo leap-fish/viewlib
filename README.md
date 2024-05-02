@@ -7,14 +7,6 @@ modified from [ebiten-camera](https://github.com/MelonFunction/ebiten-camera).
 ```go
 var (
 	cam *viewlib.Camera
-
-	renderPassContent = viewlib.NewRenderPass(cam)
-	renderPassUI      = viewlib.NewCanvasRenderPass(cam)
-
-	passes = []*viewlib.Pass{
-		renderPassContent,
-		renderPassUI,
-	}
 )
 
 func main() {
@@ -39,12 +31,15 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) LayerRender(screen *ebiten.Image) {
-	// Draw your game!
-	viewlib.Draw(renderPassContent /* image */).Render()
+	layer := 1
+    viewlib.Draw(image.Image, viewlib.RenderModeWorld, layer).
+        Position(100, 100).
+        Rotation(float32(22.0)).
+        Queue()
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	viewlib.DrawPasses(screen, passes, g)
+	viewlib.RenderTo(screen, cam)
 }
 
 ```
