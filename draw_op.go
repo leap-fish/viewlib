@@ -1,11 +1,10 @@
 package viewlib
 
-import (
-	"github.com/hajimehoshi/ebiten/v2"
-)
+import "github.com/hajimehoshi/ebiten/v2"
 
 type DrawOp struct {
-	pass *Pass
+	mode  RenderMode
+	layer int
 
 	scale    float64
 	rotation float32
@@ -19,6 +18,28 @@ type DrawOp struct {
 
 	ops    *ebiten.DrawImageOptions
 	filter ebiten.Filter
+}
+
+// Draw returns a new DrawOp which can be used to customize how the image is rendered.
+// By using Draw instead of manual ebiten drawing, you get automatic handling of rotations and sprite origins.
+// DrawOp makes sure the draw operations are performed in the correct order.
+// Call QueueRender() to draw onto the render pass.
+func Draw(image *ebiten.Image, mode RenderMode, layer int) *DrawOp {
+	return &DrawOp{
+		scale: 1.0,
+
+		layer: layer,
+		image: image,
+		mode:  mode,
+
+		filter: ebiten.FilterNearest,
+		ops:    &ebiten.DrawImageOptions{},
+	}
+}
+
+func (d *DrawOp) Mode(mode RenderMode) *DrawOp {
+	d.mode = mode
+	return d
 }
 
 // CenterOrigin sets the origin of the sprite to its center.
@@ -68,14 +89,21 @@ func (d *DrawOp) Filter(filter ebiten.Filter) *DrawOp {
 	return d
 }
 
-func (d *DrawOp) Render() {
+// Queue adds the draw op to the rendering queue.
+func (d *DrawOp) Queue() {
+	QueueRender(d, d.mode, d.layer)
+}
+
+// commit is used internally to perform the actual rendering.
+// Called by the render loop.
+func (d *DrawOp) commit(surface *ebiten.Image, camera *Camera) {
 	d.ops.GeoM.Translate(-d.originX, -d.originY)
 	d.ops.GeoM.Rotate(float64(d.rotation))
 	d.ops.GeoM.Translate(d.originX, d.originY)
 	spritePosX, spritePosY := d.posX-d.originX, d.posY-d.originY
 	d.ops.GeoM.Translate(spritePosX, spritePosY)
 
-	// Non essential operations are checked first
+	// Non-essential operations are checked first
 	if d.scale != 1 {
 		d.ops.GeoM.Scale(d.scale, d.scale)
 	}
@@ -88,46 +116,15 @@ func (d *DrawOp) Render() {
 		d.ops.Filter = d.filter
 	}
 
-	d.pass.Draw(d.image, d.ops)
-}
-
-// Draw returns a new DrawOp which can be used to customize how the image is rendered.
-// By using Draw instead of manual ebiten drawing, you get automatic handling of rotations and sprite origins.
-// DrawOp makes sure the draw operations are performed in the correct order.
-// Call Render() to draw onto the render pass.
-func Draw(pass *Pass, image *ebiten.Image) *DrawOp {
-	return &DrawOp{
-		pass:   pass,
-		scale:  1.0,
-		image:  image,
-		filter: ebiten.FilterNearest,
-		ops:    &ebiten.DrawImageOptions{},
-	}
-}
-
-// LayerRenderable must be implemented somewhere and passed in when calling DrawPasses.
-type LayerRenderable interface {
-	LayerRender(image *ebiten.Image)
-}
-
-// DrawPasses clears and draws the screen based on its input arguments.
-// The `screen` parameter is the image to draw the passes on.
-// The `passes` parameter should be a depth sorted slice of render passes.
-// When drawing, draw to the pass's Surface image.
-// The `renderable` parameter is an interface which should be implemented on your Game or scene system, as a replacement
-// since DrawPasses should be called from the original Draw(*ebiten.Image) function.
-func DrawPasses(screen *ebiten.Image, passes []*Pass, renderable LayerRenderable) {
-	for _, pass := range passes {
-		if pass.Surface == nil {
-			return
-		}
-		pass.Surface.Clear()
+	if d.mode == RenderModeCanvas {
+		surface.DrawImage(d.image, d.ops)
+		return
 	}
 
-	renderable.LayerRender(screen)
-
-	for _, pass := range passes {
-		op := &ebiten.DrawImageOptions{}
-		screen.DrawImage(pass.Surface, op)
+	if d.mode == RenderModeWorld {
+		// If we are in non-canvas mode we have to modify the image with data from our camera.
+		camera.WorldMatrix(d.ops)
+		surface.DrawImage(d.image, d.ops)
+		return
 	}
 }
