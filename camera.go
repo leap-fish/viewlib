@@ -5,25 +5,20 @@ import (
 )
 
 // Camera can look at positions, zoom and rotate.
-// The Camera implementation is a modified https://github.com/MelonFunction/ebiten-camera, in order to support how
-// viewlib performs draw layering.
+// The Camera implementation is a modified https://github.com/MelonFunction/ebiten-camera.
 type Camera struct {
 	X, Y, Scale   float64
 	Width, Height int
-	Surface       *ebiten.Image
-
-	Screen *ebiten.Image
 }
 
 // NewCamera returns a new Camera.
 func NewCamera(width, height int, x, y, zoom float64) *Camera {
 	return &Camera{
-		X:       x,
-		Y:       y,
-		Width:   width,
-		Height:  height,
-		Scale:   zoom,
-		Surface: ebiten.NewImage(width, height),
+		X:      x,
+		Y:      y,
+		Width:  width,
+		Height: height,
+		Scale:  zoom,
 	}
 }
 
@@ -48,7 +43,6 @@ func (c *Camera) Zoom(mul float64) *Camera {
 	if c.Scale <= 0.01 {
 		c.Scale = 0.01
 	}
-	c.Resize(c.Width, c.Height)
 	return c
 }
 
@@ -58,7 +52,6 @@ func (c *Camera) SetZoom(zoom float64) *Camera {
 	if c.Scale <= 0.01 {
 		c.Scale = 0.01
 	}
-	c.Resize(c.Width, c.Height)
 	return c
 }
 
@@ -66,37 +59,7 @@ func (c *Camera) SetZoom(zoom float64) *Camera {
 func (c *Camera) Resize(w, h int) *Camera {
 	c.Width = w
 	c.Height = h
-	newW := int(float64(w) * 1.0 / c.Scale)
-	newH := int(float64(h) * 1.0 / c.Scale)
-	if newW <= 16384 && newH <= 16384 {
-		c.Surface.Dispose()
-		c.Surface = ebiten.NewImage(newW, newH)
-	}
 	return c
-}
-
-func (c *Camera) GetTranslation(ops *ebiten.DrawImageOptions, x, y float64) *ebiten.DrawImageOptions {
-	w, h := c.Surface.Size()
-	ops.GeoM.Translate(float64(w)/2, float64(h)/2)
-	ops.GeoM.Translate(-c.X+x, -c.Y+y)
-	return ops
-}
-
-func (c *Camera) GetRotation(ops *ebiten.DrawImageOptions, rot, originX, originY float64) *ebiten.DrawImageOptions {
-	ops.GeoM.Translate(originX, originY)
-	ops.GeoM.Rotate(rot)
-	ops.GeoM.Translate(-originX, -originY)
-	return ops
-}
-
-func (c *Camera) GetScale(ops *ebiten.DrawImageOptions, scaleX, scaleY float64) *ebiten.DrawImageOptions {
-	ops.GeoM.Scale(scaleX, scaleY)
-	return ops
-}
-
-func (c *Camera) GetSkew(ops *ebiten.DrawImageOptions, skewX, skewY float64) *ebiten.DrawImageOptions {
-	ops.GeoM.Skew(skewX, skewY)
-	return ops
 }
 
 // GetScreenCoords converts world coords into screen coords
